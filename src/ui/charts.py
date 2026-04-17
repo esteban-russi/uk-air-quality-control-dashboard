@@ -87,12 +87,15 @@ def _build_pollutant_chart(
     return fig
 
 
-def render_charts(data: CityAirQuality) -> None:
-    """Render Plotly charts for all available pollutants in a 2-column grid."""
+def render_charts(data: CityAirQuality, pollutants: list[Pollutant] | None = None) -> None:
+    """Render Plotly charts for selected pollutants in a 2-column grid."""
+    if pollutants is None:
+        pollutants = list(Pollutant)
+
     cols = st.columns(2)
     chart_idx = 0
 
-    for pollutant in Pollutant:
+    for pollutant in pollutants:
         fig = _build_pollutant_chart(data, pollutant)
         if fig is None:
             continue

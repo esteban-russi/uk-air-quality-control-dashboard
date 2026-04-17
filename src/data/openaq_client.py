@@ -67,8 +67,8 @@ async def _fetch_sensor_hours(
 ) -> list[dict]:
     """Fetch hourly measurements for a single sensor."""
     params = {
-        "date_from": date_from.strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "date_to": date_to.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "datetime_from": date_from.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "datetime_to": date_to.strftime("%Y-%m-%dT%H:%M:%SZ"),
         "limit": OPENAQ_MEASUREMENTS_LIMIT,
     }
     resp = await client.get(

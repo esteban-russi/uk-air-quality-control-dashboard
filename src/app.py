@@ -40,7 +40,7 @@ def _fetch_data(city: str) -> None:
 
 
 # --- Sidebar ---
-selected_city, refresh = render_sidebar()
+selected_city, refresh, selected_pollutants = render_sidebar()
 
 # --- Fetch on city change or refresh ---
 city_changed = selected_city != st.session_state.selected_city
@@ -67,4 +67,4 @@ elif st.session_state.city_data is not None:
             f"Found **{len(data.stations)}** station(s) with "
             f"**{len(data.all_measurements)}** measurements."
         )
-        render_charts(data)
+        render_charts(data, selected_pollutants)
