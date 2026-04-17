@@ -20,6 +20,9 @@ env/
 *.swp
 *.swo
 
+# Copilot agents
+.github/agents/
+
 # OS
 .DS_Store
 Thumbs.db
