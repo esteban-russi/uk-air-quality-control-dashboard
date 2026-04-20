@@ -14,8 +14,8 @@ _LABEL_TO_POLLUTANT: dict[str, Pollutant] = {
 }
 
 
-def render_sidebar() -> tuple[str, bool, list[Pollutant]]:
-    """Render the sidebar and return (selected_city, refresh_clicked, selected_pollutants)."""
+def render_sidebar() -> tuple[str, bool, Pollutant]:
+    """Render the sidebar and return (selected_city, refresh_clicked, selected_pollutant)."""
     with st.sidebar:
         st.header("Controls")
 
@@ -28,17 +28,17 @@ def render_sidebar() -> tuple[str, bool, list[Pollutant]]:
         refresh = st.button("🔄 Refresh data")
 
         st.divider()
-        st.subheader("Pollutants")
-        selected_labels = st.multiselect(
-            "Select pollutants to display",
+        st.subheader("Pollutant")
+        selected_label = st.selectbox(
+            "Select pollutant to display",
             options=_ALL_POLLUTANT_LABELS,
-            default=_ALL_POLLUTANT_LABELS,
+            index=0,
         )
-        selected_pollutants = [_LABEL_TO_POLLUTANT[l] for l in selected_labels]
+        selected_pollutant = _LABEL_TO_POLLUTANT[selected_label]
 
         st.divider()
         st.markdown(
             "Data from [OpenAQ](https://openaq.org/) — last 48 hours."
         )
 
-    return selected_city, refresh, selected_pollutants
+    return selected_city, refresh, selected_pollutant

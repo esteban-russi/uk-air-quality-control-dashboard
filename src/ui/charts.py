@@ -33,10 +33,8 @@ def _build_pollutant_chart(
 ) -> go.Figure | None:
     """Build a time-series chart for a single pollutant across all stations."""
     meta = POLLUTANT_META[pollutant]
-
-    # Collect measurements for this pollutant from all stations
-    traces_added = False
     fig = go.Figure()
+    traces_added = False
 
     for station in data.stations:
         measurements = [m for m in station.measurements if m.parameter == pollutant]
@@ -75,10 +73,10 @@ def _build_pollutant_chart(
         )
 
     fig.update_layout(
-        title=f"{meta['label']} ({meta['unit']})",
+        title=f"{meta['label']} ({meta['unit']}) — Last 48 h",
         xaxis_title="Time (UTC)",
         yaxis_title=meta["unit"],
-        height=350,
+        height=500,
         margin=dict(l=40, r=20, t=50, b=40),
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
         hovermode="x unified",
@@ -87,21 +85,56 @@ def _build_pollutant_chart(
     return fig
 
 
-def render_charts(data: CityAirQuality, pollutants: list[Pollutant] | None = None) -> None:
-    """Render Plotly charts for selected pollutants in a 2-column grid."""
-    if pollutants is None:
-        pollutants = list(Pollutant)
+def _build_station_map(data: CityAirQuality) -> go.Figure | None:
+    """Build a Mapbox scatter map of monitoring stations."""
+    if not data.stations:
+        return None
 
-    cols = st.columns(2)
-    chart_idx = 0
+    lats = [s.latitude for s in data.stations]
+    lons = [s.longitude for s in data.stations]
+    names = [s.name for s in data.stations]
+    counts = [len(s.measurements) for s in data.stations]
+    hover = [f"{n}<br>{c} measurements" for n, c in zip(names, counts)]
 
-    for pollutant in pollutants:
-        fig = _build_pollutant_chart(data, pollutant)
-        if fig is None:
-            continue
-        with cols[chart_idx % 2]:
-            st.plotly_chart(fig, use_container_width=True)
-        chart_idx += 1
+    fig = go.Figure(go.Scattermapbox(
+        lat=lats,
+        lon=lons,
+        mode="markers+text",
+        marker=dict(size=12, color="#2980b9"),
+        text=names,
+        textposition="top center",
+        hovertext=hover,
+        hoverinfo="text",
+    ))
 
-    if chart_idx == 0:
-        st.warning("No measurement data available for any pollutant.")
+    fig.update_layout(
+        mapbox=dict(
+            style="open-street-map",
+            center=dict(lat=sum(lats) / len(lats), lon=sum(lons) / len(lons)),
+            zoom=10,
+        ),
+        height=450,
+        margin=dict(l=0, r=0, t=0, b=0),
+    )
+
+    return fig
+
+
+def render_charts(data: CityAirQuality, pollutant: Pollutant | None = None) -> None:
+    """Render a line chart for one pollutant and a station map."""
+    if pollutant is None:
+        pollutant = Pollutant.PM25
+
+    # --- Line chart ---
+    line_fig = _build_pollutant_chart(data, pollutant)
+    if line_fig is not None:
+        st.plotly_chart(line_fig, use_container_width=True)
+    else:
+        st.warning(f"No data available for {POLLUTANT_META[pollutant]['label']}.")
+        return
+
+    # --- Station map ---
+    st.subheader("Monitoring Stations")
+    map_fig = _build_station_map(data)
+    if map_fig is not None:
+        st.plotly_chart(map_fig, use_container_width=True)
