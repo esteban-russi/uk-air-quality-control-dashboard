@@ -51,7 +51,7 @@ if city_changed or refresh or st.session_state.city_data is None:
 
 # --- Main content ---
 st.title("🌬️ UK Air Quality Dashboard")
-st.caption(f"Showing last 48 hours of data for **{st.session_state.selected_city}**")
+st.caption(f"Real-time air quality monitoring for **{st.session_state.selected_city}**")
 
 if st.session_state.fetch_error:
     st.error(f"Failed to fetch data: {st.session_state.fetch_error}")

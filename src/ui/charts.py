@@ -9,12 +9,12 @@ from src.models.schemas import CityAirQuality, Pollutant
 
 # Display names and colours per pollutant
 POLLUTANT_META: dict[Pollutant, dict] = {
-    Pollutant.PM25: {"label": "PM2.5", "color": "#e74c3c", "unit": "µg/m³"},
-    Pollutant.PM10: {"label": "PM10", "color": "#e67e22", "unit": "µg/m³"},
-    Pollutant.NO2:  {"label": "NO₂",  "color": "#8e44ad", "unit": "µg/m³"},
-    Pollutant.O3:   {"label": "O₃",   "color": "#2980b9", "unit": "µg/m³"},
-    Pollutant.SO2:  {"label": "SO₂",  "color": "#27ae60", "unit": "µg/m³"},
-    Pollutant.CO:   {"label": "CO",   "color": "#95a5a6", "unit": "ppm"},
+    Pollutant.PM25: {"label": "PM2.5", "name": "Fine Particulate Matter", "color": "#e74c3c", "unit": "µg/m³"},
+    Pollutant.PM10: {"label": "PM10",  "name": "Coarse Particulate Matter", "color": "#e67e22", "unit": "µg/m³"},
+    Pollutant.NO2:  {"label": "NO₂",   "name": "Nitrogen Dioxide", "color": "#8e44ad", "unit": "µg/m³"},
+    Pollutant.O3:   {"label": "O₃",    "name": "Ozone", "color": "#2980b9", "unit": "µg/m³"},
+    Pollutant.SO2:  {"label": "SO₂",   "name": "Sulphur Dioxide", "color": "#27ae60", "unit": "µg/m³"},
+    Pollutant.CO:   {"label": "CO",    "name": "Carbon Monoxide", "color": "#95a5a6", "unit": "ppm"},
 }
 
 # WHO 24-hour guideline values (µg/m³ unless noted)
@@ -125,12 +125,38 @@ def render_charts(data: CityAirQuality, pollutant: Pollutant | None = None) -> N
     if pollutant is None:
         pollutant = Pollutant.PM25
 
+    meta = POLLUTANT_META[pollutant]
+
+    # --- Pollutant header ---
+    st.header(f"{meta['name']} ({meta['label']})")
+    st.caption(f"Showing last 48 h — unit: {meta['unit']}")
+
+    # --- KPIs ---
+    all_values = [
+        m.value
+        for s in data.stations
+        for m in s.measurements
+        if m.parameter == pollutant
+    ]
+    if all_values:
+        guideline = WHO_GUIDELINES.get(pollutant)
+        col1, col2, col3, col4 = st.columns(4)
+        col1.metric("Mean", f"{sum(all_values) / len(all_values):.1f} {meta['unit']}")
+        col2.metric("Max", f"{max(all_values):.1f} {meta['unit']}")
+        col3.metric("Min", f"{min(all_values):.1f} {meta['unit']}")
+        if guideline is not None:
+            pct_above = sum(1 for v in all_values if v > guideline) / len(all_values) * 100
+            col4.metric("Above WHO Guideline", f"{pct_above:.0f}%")
+        else:
+            col4.metric("Readings", f"{len(all_values)}")
+
     # --- Line chart ---
+    st.subheader("Time Series")
     line_fig = _build_pollutant_chart(data, pollutant)
     if line_fig is not None:
         st.plotly_chart(line_fig, use_container_width=True)
     else:
-        st.warning(f"No data available for {POLLUTANT_META[pollutant]['label']}.")
+        st.warning(f"No data available for {meta['label']}.")
         return
 
     # --- Station map ---
