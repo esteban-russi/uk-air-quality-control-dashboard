@@ -8,9 +8,8 @@ import streamlit as st
 
 from src.config import CITIES
 from src.data.openaq_client import fetch_city_data
-from src.models.schemas import CityAirQuality
-from src.ui.charts import render_charts
-from src.ui.sidebar import render_sidebar
+from src.models.schemas import CityAirQuality, Pollutant
+from src.ui.charts import POLLUTANT_META, render_charts
 
 # --- Page config ---
 st.set_page_config(
@@ -18,6 +17,12 @@ st.set_page_config(
     page_icon="🌬️",
     layout="wide",
 )
+
+# --- Pollutant lookup tables ---
+_ALL_POLLUTANT_LABELS: list[str] = [meta["label"] for meta in POLLUTANT_META.values()]
+_LABEL_TO_POLLUTANT: dict[str, Pollutant] = {
+    meta["label"]: p for p, meta in POLLUTANT_META.items()
+}
 
 # --- Session state init ---
 if "city_data" not in st.session_state:
@@ -39,20 +44,35 @@ def _fetch_data(city: str) -> None:
         st.session_state.city_data = None
 
 
-# --- Sidebar ---
-selected_city, refresh, selected_pollutant = render_sidebar()
+# --- Title ---
+st.title("UK Air Quality Dashboard")
 
-# --- Fetch on city change or refresh ---
-city_changed = selected_city != st.session_state.selected_city
-if city_changed or refresh or st.session_state.city_data is None:
+# --- Description ---
+"Real-time air quality monitoring for UK cities."
+
+
+# --- City selector + refresh (top row) ---
+st.caption(f"Select a city and click 'Refresh data' to fetch the latest air quality measurements ")
+col_city, col_btn = st.columns([3, 1])
+with col_city:
+    selected_city = st.selectbox(
+        "City",
+        options=CITIES,
+        index=CITIES.index(st.session_state.get("selected_city", CITIES[0])),
+        label_visibility="collapsed",
+    )
+with col_btn:
+    refresh = st.button("Refresh data", use_container_width=True)
+
+
+
+# --- Fetch only on button press or first load ---
+if refresh or st.session_state.city_data is None:
     st.session_state.selected_city = selected_city
     with st.spinner(f"Fetching air quality data for {selected_city}..."):
         _fetch_data(selected_city)
 
 # --- Main content ---
-st.title("🌬️ UK Air Quality Dashboard")
-st.caption(f"Real-time air quality monitoring for **{st.session_state.selected_city}**")
-
 if st.session_state.fetch_error:
     st.error(f"Failed to fetch data: {st.session_state.fetch_error}")
 elif st.session_state.city_data is not None:
@@ -67,4 +87,14 @@ elif st.session_state.city_data is not None:
             f"Found **{len(data.stations)}** station(s) with "
             f"**{len(data.all_measurements)}** measurements."
         )
+        st.caption(f"Select a pollutant below to view charts and station map.")
+        # --- Pollutant selector (below info) ---
+        selected_label = st.selectbox(
+            "Pollutant",
+            options=_ALL_POLLUTANT_LABELS,
+            index=0,
+            label_visibility="collapsed",
+        )
+        selected_pollutant = _LABEL_TO_POLLUTANT[selected_label]
+
         render_charts(data, selected_pollutant)
