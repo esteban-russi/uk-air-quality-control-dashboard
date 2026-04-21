@@ -19,9 +19,11 @@ st.set_page_config(
 )
 
 # --- Pollutant lookup tables ---
-_ALL_POLLUTANT_LABELS: list[str] = [meta["label"] for meta in POLLUTANT_META.values()]
-_LABEL_TO_POLLUTANT: dict[str, Pollutant] = {
-    meta["label"]: p for p, meta in POLLUTANT_META.items()
+_ALL_POLLUTANT_OPTIONS: list[str] = [
+    f"{meta['name']} ({meta['label']})" for meta in POLLUTANT_META.values()
+]
+_OPTION_TO_POLLUTANT: dict[str, Pollutant] = {
+    f"{meta['name']} ({meta['label']})": p for p, meta in POLLUTANT_META.items()
 }
 
 # --- Session state init ---
@@ -45,10 +47,13 @@ def _fetch_data(city: str) -> None:
 
 
 # --- Title ---
-st.title("UK Air Quality Dashboard")
+st.title("Real-time air quality monitoring for UK cities")
 
 # --- Description ---
-"Real-time air quality monitoring for UK cities."
+("Monitor air pollution levels across major UK cities using live data from "
+ "the OpenAQ network. Select a city, explore pollutant concentrations over "
+ "the last 48 hours, compare readings against WHO guidelines, and locate "
+ "nearby monitoring stations on an interactive map.")
 
 
 # --- City selector + refresh (top row) ---
@@ -87,14 +92,16 @@ elif st.session_state.city_data is not None:
             f"Found **{len(data.stations)}** station(s) with "
             f"**{len(data.all_measurements)}** measurements."
         )
+        st.divider()
         st.caption(f"Select a pollutant below to view charts and station map.")
         # --- Pollutant selector (below info) ---
         selected_label = st.selectbox(
             "Pollutant",
-            options=_ALL_POLLUTANT_LABELS,
+            options=_ALL_POLLUTANT_OPTIONS,
             index=0,
             label_visibility="collapsed",
         )
-        selected_pollutant = _LABEL_TO_POLLUTANT[selected_label]
+        selected_pollutant = _OPTION_TO_POLLUTANT[selected_label]
+        st.markdown(POLLUTANT_META[selected_pollutant]["description"])
 
         render_charts(data, selected_pollutant)

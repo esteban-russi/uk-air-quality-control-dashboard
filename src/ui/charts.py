@@ -7,14 +7,63 @@ import streamlit as st
 
 from src.models.schemas import CityAirQuality, Pollutant
 
-# Display names and colours per pollutant
+# Display names, colours and descriptions per pollutant
 POLLUTANT_META: dict[Pollutant, dict] = {
-    Pollutant.PM25: {"label": "PM2.5", "name": "Fine Particulate Matter", "color": "#e74c3c", "unit": "µg/m³"},
-    Pollutant.PM10: {"label": "PM10",  "name": "Coarse Particulate Matter", "color": "#e67e22", "unit": "µg/m³"},
-    Pollutant.NO2:  {"label": "NO₂",   "name": "Nitrogen Dioxide", "color": "#8e44ad", "unit": "µg/m³"},
-    Pollutant.O3:   {"label": "O₃",    "name": "Ozone", "color": "#2980b9", "unit": "µg/m³"},
-    Pollutant.SO2:  {"label": "SO₂",   "name": "Sulphur Dioxide", "color": "#27ae60", "unit": "µg/m³"},
-    Pollutant.CO:   {"label": "CO",    "name": "Carbon Monoxide", "color": "#95a5a6", "unit": "ppm"},
+    Pollutant.PM25: {
+        "label": "PM2.5", "name": "Fine Particulate Matter",
+        "color": "#e74c3c", "unit": "µg/m³",
+        "description": (
+            "Tiny airborne particles smaller than 2.5 µm, produced by combustion, "
+            "vehicle exhaust, and industrial processes. High levels are harmful — they "
+            "penetrate deep into the lungs and bloodstream, increasing risks of heart "
+            "and respiratory disease."
+        ),
+    },
+    Pollutant.PM10: {
+        "label": "PM10", "name": "Coarse Particulate Matter",
+        "color": "#e67e22", "unit": "µg/m³",
+        "description": (
+            "Inhalable particles up to 10 µm in diameter from dust, construction, "
+            "and road traffic. High levels irritate the airways and can worsen asthma "
+            "and other lung conditions."
+        ),
+    },
+    Pollutant.NO2: {
+        "label": "NO₂", "name": "Nitrogen Dioxide",
+        "color": "#8e44ad", "unit": "µg/m³",
+        "description": (
+            "A reddish-brown gas mainly emitted by road vehicles and power plants. "
+            "High levels inflame the airways, reduce lung function, and contribute "
+            "to smog and acid rain."
+        ),
+    },
+    Pollutant.O3: {
+        "label": "O₃", "name": "Ozone",
+        "color": "#2980b9", "unit": "µg/m³",
+        "description": (
+            "A reactive gas formed when sunlight hits vehicle and industrial emissions. "
+            "While the ozone layer is protective, ground-level ozone is harmful — high "
+            "levels trigger breathing problems and aggravate lung diseases."
+        ),
+    },
+    Pollutant.SO2: {
+        "label": "SO₂", "name": "Sulphur Dioxide",
+        "color": "#27ae60", "unit": "µg/m³",
+        "description": (
+            "A sharp-smelling gas released by burning fossil fuels, especially coal and oil. "
+            "High levels constrict airways, worsen asthma, and contribute to acid rain and "
+            "particulate pollution."
+        ),
+    },
+    Pollutant.CO: {
+        "label": "CO", "name": "Carbon Monoxide",
+        "color": "#95a5a6", "unit": "ppm",
+        "description": (
+            "A colourless, odourless gas produced by incomplete combustion in vehicles and "
+            "heating systems. High levels reduce the blood's ability to carry oxygen, causing "
+            "headaches, dizziness, and at extreme concentrations, can be fatal."
+        ),
+    },
 }
 
 # WHO 24-hour guideline values (µg/m³ unless noted)
@@ -126,10 +175,6 @@ def render_charts(data: CityAirQuality, pollutant: Pollutant | None = None) -> N
         pollutant = Pollutant.PM25
 
     meta = POLLUTANT_META[pollutant]
-
-    # --- Pollutant header ---
-    st.header(f"{meta['name']} ({meta['label']})")
-    st.caption(f"Showing last 48 h — unit: {meta['unit']}")
 
     # --- KPIs ---
     all_values = [
