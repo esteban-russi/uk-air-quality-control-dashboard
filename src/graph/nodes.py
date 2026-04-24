@@ -46,7 +46,7 @@ def _summarise_measurements(measurements: list[Measurement]) -> str:
         by_pollutant.setdefault(m.parameter, []).append(m)
 
     lines: list[str] = []
-    for pollutant, ms in sorted(by_pollutant.items(), key=lambda x: x.value):
+    for pollutant, ms in sorted(by_pollutant.items(), key=lambda x: x[0].value):
         ms.sort(key=lambda m: m.datetime_from)
         values = [m.value for m in ms]
         stations = sorted({m.location_name for m in ms})
