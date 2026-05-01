@@ -36,10 +36,27 @@ def render_chat(data: CityAirQuality, analysis: str) -> None:
         st.session_state.chat_history: list[ChatMessage] = []
 
     st.divider()
-    st.subheader("Ask a follow-up question")
+
+    # --- Header row: title + clear button ---
+    col_title, col_clear = st.columns([4, 1])
+    with col_title:
+        st.subheader("Ask a follow-up question")
+    with col_clear:
+        if st.session_state.chat_history and st.button(
+            "Clear chat", use_container_width=True
+        ):
+            st.session_state.chat_history = []
+            st.rerun()
+
+    # --- Data context indicator ---
     st.caption(
-        f"Ask questions about the air quality data for **{data.city}**. "
-        "The assistant will answer using only the available measurements."
+        f"🗂️ Context: **{data.city}** · "
+        f"{len(data.stations)} station(s) · "
+        f"{len(data.all_measurements)} measurements · "
+        f"{'✅ Analysis loaded' if analysis else '⚠️ No analysis available'}"
+    )
+    st.caption(
+        "The assistant answers using only the available measurements and analysis."
     )
 
     # --- Display chat history ---
