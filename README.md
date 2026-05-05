@@ -34,7 +34,7 @@ See [PROJECT_PLAN.md](PROJECT_PLAN.md) for the full architecture diagram and dep
 
 ```bash
 # Clone the repo
-git clone https://github.com/<your-org>/uk-air-quality-control-dashboard.git
+git clone https://github.com/esteban-russi/uk-air-quality-control-dashboard.git
 cd uk-air-quality-control-dashboard
 
 # Create and activate a virtual environment
@@ -86,18 +86,21 @@ src/
 ├── app.py                  # Streamlit entry point
 ├── config.py               # Settings, env vars, constants
 ├── data/
-│   ├── openaq_client.py    # OpenAQ API client
+│   ├── openaq_client.py    # Async OpenAQ v3 API client
 │   └── cities.py           # City → coordinates mapping
 ├── graph/
 │   ├── chain.py            # LangGraph chain (retrieve → analyze → respond)
-│   ├── nodes.py            # LLM node functions
-│   ├── state.py            # Graph state definition
-│   └── prompts/            # System prompt files
+│   ├── nodes.py            # Retrieve, analyze, respond node functions
+│   ├── state.py            # GraphState TypedDict
+│   └── prompts/
+│       ├── analysis.txt    # Analysis system prompt
+│       └── respond.txt     # Follow-up chat system prompt
 ├── models/
 │   └── schemas.py          # Pydantic models
 └── ui/
-    ├── charts.py           # Plotly charts & map
-    └── chat.py             # Chat interface component
+    ├── charts.py           # Plotly charts, KPIs & station map
+    ├── chat.py             # Chat interface component
+    └── sidebar.py          # City selector (legacy)
 tests/
 ├── conftest.py
 ├── test_chain.py
