@@ -7,9 +7,8 @@ import asyncio
 import streamlit as st
 
 from src.config import CITIES
-from src.data.openaq_client import fetch_city_data
 from src.graph.chain import analysis_chain
-from src.models.schemas import CityAirQuality, Pollutant
+from src.models.schemas import Pollutant
 from src.ui.charts import POLLUTANT_META, render_charts
 from src.ui.chat import render_chat
 
@@ -30,13 +29,13 @@ _OPTION_TO_POLLUTANT: dict[str, Pollutant] = {
 
 # --- Session state init ---
 if "city_data" not in st.session_state:
-    st.session_state.city_data: CityAirQuality | None = None
+    st.session_state.city_data = None
 if "selected_city" not in st.session_state:
-    st.session_state.selected_city: str = CITIES[0]
+    st.session_state.selected_city = CITIES[0]
 if "fetch_error" not in st.session_state:
-    st.session_state.fetch_error: str | None = None
+    st.session_state.fetch_error = None
 if "analysis" not in st.session_state:
-    st.session_state.analysis: str = ""
+    st.session_state.analysis = ""
 
 
 def _fetch_and_analyse(city: str) -> None:
@@ -69,7 +68,7 @@ st.title("Real-time air quality monitoring for UK cities")
 
 
 # --- City selector + refresh (top row) ---
-st.caption(f"Select a city and click 'Refresh data' to fetch the latest air quality measurements ")
+st.caption("Select a city and click 'Refresh data' to fetch the latest air quality measurements")
 col_city, col_btn = st.columns([3, 1])
 with col_city:
     selected_city = st.selectbox(
@@ -113,7 +112,7 @@ elif st.session_state.city_data is not None:
             f"**{len(data.all_measurements)}** measurements."
         )
         st.divider()
-        st.caption(f"Select a pollutant below to view charts and station map.")
+        st.caption("Select a pollutant below to view charts and station map.")
         # --- Pollutant selector (below info) ---
         selected_label = st.selectbox(
             "Pollutant",

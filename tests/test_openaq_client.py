@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
 from unittest.mock import AsyncMock, patch
 
 import httpx
@@ -110,7 +109,6 @@ class TestParseMeasurement:
 
 
 class TestFetchCityData:
-    @pytest.mark.asyncio
     async def test_returns_city_air_quality(self):
         location = _make_location()
         hourly = [_make_hourly_result(12.5), _make_hourly_result(15.0)]
@@ -137,7 +135,6 @@ class TestFetchCityData:
         assert len(result.stations) == 1
         assert len(result.stations[0].measurements) == 2
 
-    @pytest.mark.asyncio
     async def test_no_locations_returns_empty(self):
         with patch("src.data.openaq_client.httpx.AsyncClient") as MockClient:
             instance = AsyncMock()
@@ -157,7 +154,6 @@ class TestFetchCityData:
         assert result.city == "London"
         assert result.stations == []
 
-    @pytest.mark.asyncio
     async def test_invalid_city_raises(self):
         with pytest.raises(KeyError):
             await fetch_city_data("NotACity")

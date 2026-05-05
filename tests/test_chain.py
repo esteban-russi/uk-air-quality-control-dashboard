@@ -5,8 +5,6 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, patch
 
-import pytest
-
 from src.graph.chain import build_analysis_chain, build_chat_chain, _should_respond
 from src.graph.nodes import _summarise_measurements
 from src.models.schemas import (
@@ -135,7 +133,6 @@ class TestSummariseMeasurements:
 # ---------------------------------------------------------------------------
 
 class TestAnalysisChain:
-    @pytest.mark.asyncio
     async def test_analysis_chain_produces_analysis(self):
         """Full chain: mock OpenAQ + mock LLM → state contains analysis."""
         city_data = _make_city_data()
@@ -156,7 +153,6 @@ class TestAnalysisChain:
         assert result["analysis"] == "Air quality in London is moderate."
         assert result["error"] == ""
 
-    @pytest.mark.asyncio
     async def test_analysis_chain_handles_fetch_error(self):
         """Retrieve failure → empty analysis, error message populated."""
         with patch(
@@ -171,7 +167,6 @@ class TestAnalysisChain:
         assert result["analysis"] == ""
         assert "API down" in result["error"]
 
-    @pytest.mark.asyncio
     async def test_analysis_chain_handles_llm_error(self):
         """LLM failure → analysis contains error message."""
         city_data = _make_city_data()
@@ -191,7 +186,6 @@ class TestAnalysisChain:
 
         assert "Analysis unavailable" in result["analysis"]
 
-    @pytest.mark.asyncio
     async def test_analysis_sends_data_to_llm(self):
         """Verify the LLM receives the measurement summary in its prompt."""
         city_data = _make_city_data()
@@ -221,7 +215,6 @@ class TestAnalysisChain:
 # ---------------------------------------------------------------------------
 
 class TestChatChain:
-    @pytest.mark.asyncio
     async def test_chat_chain_responds_to_question(self):
         """Follow-up question → respond node produces answer."""
         city_data = _make_city_data()
@@ -243,7 +236,6 @@ class TestChatChain:
         assert result["chat_history"][1].role == "assistant"
         assert "12 µg/m³" in result["chat_history"][1].content
 
-    @pytest.mark.asyncio
     async def test_chat_chain_skips_when_no_question(self):
         """No user_question → chain ends immediately, state unchanged."""
         chain = build_chat_chain()
@@ -256,7 +248,6 @@ class TestChatChain:
 
         assert result.get("chat_history") == []
 
-    @pytest.mark.asyncio
     async def test_chat_chain_preserves_history(self):
         """Existing chat history is preserved and extended."""
         city_data = _make_city_data()
@@ -279,7 +270,6 @@ class TestChatChain:
         assert result["chat_history"][2].content == "Second question"
         assert result["chat_history"][3].content == "Follow-up answer."
 
-    @pytest.mark.asyncio
     async def test_chat_chain_passes_history_to_llm(self):
         """Verify the LLM receives chat history as context."""
         city_data = _make_city_data()
@@ -311,7 +301,6 @@ class TestChatChain:
 # ---------------------------------------------------------------------------
 
 class TestGrounding:
-    @pytest.mark.asyncio
     async def test_analysis_prompt_contains_who_guidelines(self):
         """System prompt sent to LLM includes WHO guideline values."""
         city_data = _make_city_data()
@@ -334,7 +323,6 @@ class TestGrounding:
         assert "45 µg/m³" in system_msg  # PM10 guideline
         assert "ONLY use the data provided" in system_msg
 
-    @pytest.mark.asyncio
     async def test_respond_prompt_enforces_grounding(self):
         """Respond system prompt instructs LLM to stick to provided data."""
         city_data = _make_city_data()
@@ -354,7 +342,6 @@ class TestGrounding:
         assert "ONLY" in system_msg
         assert "Do NOT" in system_msg
 
-    @pytest.mark.asyncio
     async def test_respond_includes_data_context(self):
         """Respond node passes the measurement data as context to the LLM."""
         city_data = _make_city_data()

@@ -33,7 +33,7 @@ def render_chat(data: CityAirQuality, analysis: str) -> None:
     """Render the chat interface for follow-up questions."""
     # --- Init session state ---
     if "chat_history" not in st.session_state:
-        st.session_state.chat_history: list[ChatMessage] = []
+        st.session_state.chat_history = []
 
     st.divider()
 
