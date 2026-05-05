@@ -91,7 +91,15 @@ if refresh or st.session_state.city_data is None:
 
 # --- Main content ---
 if st.session_state.fetch_error:
-    st.error(f"Failed to fetch data: {st.session_state.fetch_error}")
+    error_msg = st.session_state.fetch_error
+    if "rate limit" in error_msg.lower() or "429" in error_msg:
+        st.warning("⏳ API rate limit reached. Please wait a moment and try again.")
+    elif "401" in error_msg or "unauthorized" in error_msg.lower():
+        st.error("🔑 API authentication failed. Check your `OPENAQ_API_KEY` in `.env`.")
+    elif "timeout" in error_msg.lower():
+        st.warning("⏱️ Request timed out. The API may be slow — try again shortly.")
+    else:
+        st.error(f"Failed to fetch data: {error_msg}")
 elif st.session_state.city_data is not None:
     data = st.session_state.city_data
     if not data.stations:
