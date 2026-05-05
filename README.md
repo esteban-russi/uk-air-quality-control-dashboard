@@ -10,7 +10,8 @@ A Streamlit dashboard that displays real-time air quality data for major UK citi
 - **Time-series chart** — Plotly line chart per pollutant across all nearby stations
 - **Station map** — Interactive OpenStreetMap showing monitoring station locations
 - **Pollutant info** — Short description of each pollutant, its sources, and health impact
-- **LLM analysis** *(planned)* — Gemini Flash–powered summary and follow-up chat via LangGraph
+- **LLM analysis** — Gemini Flash–powered air quality summary with WHO guideline comparison via LangGraph
+- **Follow-up chat** — Ask grounded questions about the data; answers use only available measurements
 
 ## Architecture
 
@@ -26,8 +27,8 @@ See [PROJECT_PLAN.md](PROJECT_PLAN.md) for the full architecture diagram and dep
 ### Prerequisites
 
 - Python 3.11+
-- An [OpenAQ API key](https://docs.openaq.org/) (optional, increases rate limit)
-- A [Google AI Studio API key](https://aistudio.google.com/) (required for LLM features)
+- An [OpenAQ API key](https://explore.openaq.org/register) (required for data access)
+- A [Google AI Studio API key](https://aistudio.google.com/) (required for LLM analysis & chat)
 
 ### Setup
 
@@ -74,8 +75,8 @@ make format         # ruff format src/ tests/
 
 | Variable | Required | Description |
 |---|---|---|
-| `OPENAQ_API_KEY` | No | OpenAQ API key — increases rate limit |
-| `GOOGLE_AI_STUDIO_API_KEY` | For LLM features | Google AI Studio API key for Gemini |
+| `OPENAQ_API_KEY` | Yes | OpenAQ API key ([register here](https://explore.openaq.org/register)) |
+| `GOOGLE_AI_STUDIO_API_KEY` | Yes | Google AI Studio API key for Gemini |
 | `GEMINI_MODEL` | No | Gemini model name (default: `gemini-2.0-flash`) |
 
 ## Project Structure
@@ -87,13 +88,19 @@ src/
 ├── data/
 │   ├── openaq_client.py    # OpenAQ API client
 │   └── cities.py           # City → coordinates mapping
-├── graph/                  # LangGraph chain (planned)
+├── graph/
+│   ├── chain.py            # LangGraph chain (retrieve → analyze → respond)
+│   ├── nodes.py            # LLM node functions
+│   ├── state.py            # Graph state definition
+│   └── prompts/            # System prompt files
 ├── models/
 │   └── schemas.py          # Pydantic models
 └── ui/
-    └── charts.py           # Plotly charts & map
+    ├── charts.py           # Plotly charts & map
+    └── chat.py             # Chat interface component
 tests/
 ├── conftest.py
+├── test_chain.py
 ├── test_openaq_client.py
 └── test_schemas.py
 ```
@@ -104,8 +111,14 @@ tests/
 - **[Plotly](https://plotly.com/python/)** — Interactive charts & maps
 - **[Pydantic v2](https://docs.pydantic.dev/)** — Data validation
 - **[httpx](https://www.python-httpx.org/)** — Async HTTP client
-- **[LangGraph](https://langchain-ai.github.io/langgraph/)** — LLM orchestration (planned)
-- **[Gemini Flash](https://ai.google.dev/)** — LLM analysis (planned)
+- **[LangGraph](https://langchain-ai.github.io/langgraph/)** — LLM orchestration chain
+- **[Gemini Flash](https://ai.google.dev/)** — Air quality analysis & chat
+
+## CI/CD
+
+GitHub Actions runs on every push/PR to `main`:
+- **Lint** — `ruff check`
+- **Test** — `pytest` (38 tests, all mocked — no API keys required)
 
 ## License
 

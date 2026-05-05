@@ -8,8 +8,10 @@ import streamlit as st
 
 from src.config import CITIES
 from src.data.openaq_client import fetch_city_data
+from src.graph.chain import analysis_chain
 from src.models.schemas import CityAirQuality, Pollutant
 from src.ui.charts import POLLUTANT_META, render_charts
+from src.ui.chat import render_chat
 
 # --- Page config ---
 st.set_page_config(
@@ -33,17 +35,27 @@ if "selected_city" not in st.session_state:
     st.session_state.selected_city: str = CITIES[0]
 if "fetch_error" not in st.session_state:
     st.session_state.fetch_error: str | None = None
+if "analysis" not in st.session_state:
+    st.session_state.analysis: str = ""
 
 
-def _fetch_data(city: str) -> None:
-    """Fetch air quality data for the selected city."""
+def _fetch_and_analyse(city: str) -> None:
+    """Fetch air quality data and run LLM analysis for the selected city."""
     try:
         st.session_state.fetch_error = None
-        data = asyncio.run(fetch_city_data(city))
-        st.session_state.city_data = data
+        st.session_state.analysis = ""
+        st.session_state.chat_history = []
+        result = asyncio.run(
+            analysis_chain.ainvoke({"city": city})
+        )
+        st.session_state.city_data = result.get("measurements")
+        st.session_state.analysis = result.get("analysis", "")
+        if result.get("error"):
+            st.session_state.fetch_error = result["error"]
     except Exception as exc:
         st.session_state.fetch_error = str(exc)
         st.session_state.city_data = None
+        st.session_state.analysis = ""
 
 
 # --- Title ---
@@ -74,12 +86,20 @@ with col_btn:
 # --- Fetch only on button press or first load ---
 if refresh or st.session_state.city_data is None:
     st.session_state.selected_city = selected_city
-    with st.spinner(f"Fetching air quality data for {selected_city}..."):
-        _fetch_data(selected_city)
+    with st.spinner(f"Fetching data and generating analysis for {selected_city}..."):
+        _fetch_and_analyse(selected_city)
 
 # --- Main content ---
 if st.session_state.fetch_error:
-    st.error(f"Failed to fetch data: {st.session_state.fetch_error}")
+    error_msg = st.session_state.fetch_error
+    if "rate limit" in error_msg.lower() or "429" in error_msg:
+        st.warning("⏳ API rate limit reached. Please wait a moment and try again.")
+    elif "401" in error_msg or "unauthorized" in error_msg.lower():
+        st.error("🔑 API authentication failed. Check your `OPENAQ_API_KEY` in `.env`.")
+    elif "timeout" in error_msg.lower():
+        st.warning("⏱️ Request timed out. The API may be slow — try again shortly.")
+    else:
+        st.error(f"Failed to fetch data: {error_msg}")
 elif st.session_state.city_data is not None:
     data = st.session_state.city_data
     if not data.stations:
@@ -105,3 +125,12 @@ elif st.session_state.city_data is not None:
         st.markdown(POLLUTANT_META[selected_pollutant]["description"])
 
         render_charts(data, selected_pollutant)
+
+        # --- LLM Analysis ---
+        if st.session_state.analysis:
+            st.divider()
+            st.subheader("AI Analysis")
+            st.markdown(st.session_state.analysis)
+
+        # --- Chat interface ---
+        render_chat(data, st.session_state.analysis)

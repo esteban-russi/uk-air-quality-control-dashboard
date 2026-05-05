@@ -44,6 +44,10 @@ async def _fetch_locations(
         "limit": 100,
     }
     resp = await client.get(f"{OPENAQ_BASE_URL}/locations", params=params)
+    if resp.status_code == 429:
+        raise RuntimeError(
+            "OpenAQ rate limit exceeded. Please wait a minute and try again."
+        )
     resp.raise_for_status()
     data = resp.json()
     return data.get("results", [])
@@ -75,6 +79,9 @@ async def _fetch_sensor_hours(
         f"{OPENAQ_BASE_URL}/sensors/{sensor_id}/hours",
         params=params,
     )
+    if resp.status_code == 429:
+        logger.warning("Rate limited fetching sensor %s, skipping", sensor_id)
+        return []
     resp.raise_for_status()
     data = resp.json()
     return data.get("results", [])

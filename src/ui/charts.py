@@ -199,7 +199,7 @@ def render_charts(data: CityAirQuality, pollutant: Pollutant | None = None) -> N
     st.subheader("Time Series")
     line_fig = _build_pollutant_chart(data, pollutant)
     if line_fig is not None:
-        st.plotly_chart(line_fig, use_container_width=True)
+        st.plotly_chart(line_fig, use_container_width=True, config={"displayModeBar": True, "toImageButtonOptions": {"format": "png", "filename": f"{data.city}_{pollutant.value}"}})
     else:
         st.warning(f"No data available for {meta['label']}.")
         return
