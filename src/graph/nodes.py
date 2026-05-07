@@ -76,9 +76,11 @@ def _get_llm() -> ChatGoogleGenerativeAI:
 async def retrieve(state: GraphState) -> GraphState:
     """Fetch air quality data from OpenAQ for the selected city."""
     city = state["city"]
-    logger.info("Retrieving air quality data for %s", city)
+    hours = state.get("hours", 48)
+    granularity = state.get("granularity", "hours")
+    logger.info("Retrieving air quality data for %s (%sh, %s)", city, hours, granularity)
     try:
-        data = await fetch_city_data(city)
+        data = await fetch_city_data(city, hours=hours, granularity=granularity)
         return {**state, "measurements": data, "error": ""}
     except Exception as exc:
         logger.exception("Failed to retrieve data for %s", city)
@@ -99,11 +101,12 @@ async def analyze(state: GraphState) -> GraphState:
     system_prompt = _ANALYSIS_SYSTEM_PROMPT.format(
         who_guidelines=_format_who_guidelines(),
     )
+    range_label = state.get("range_label") or f"last {state.get('hours', 48)} hours"
     user_content = (
         f"City: {data.city}\n"
         f"Stations reporting: {len(data.stations)}\n"
         f"Total measurements: {len(data.all_measurements)}\n"
-        f"Measurement window: last 48 hours\n\n"
+        f"Measurement window: {range_label}\n\n"
         f"Data summary:\n{summary}"
     )
 

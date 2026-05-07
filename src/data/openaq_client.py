@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import datetime, timedelta, timezone
 
@@ -11,6 +12,7 @@ from src.config import (
     MEASUREMENT_WINDOW_HOURS,
     OPENAQ_API_KEY,
     OPENAQ_BASE_URL,
+    OPENAQ_MAX_CONCURRENT,
     OPENAQ_MEASUREMENTS_LIMIT,
     OPENAQ_SEARCH_RADIUS_M,
     POLLUTANT_PARAMS,
@@ -22,6 +24,8 @@ from src.models.schemas import (
     Pollutant,
     StationData,
 )
+
+_VALID_GRANULARITIES: frozenset[str] = frozenset({"hours", "days"})
 
 logger = logging.getLogger(__name__)
 
@@ -63,22 +67,27 @@ def _extract_sensors(location: dict) -> list[dict]:
     return sensors
 
 
-async def _fetch_sensor_hours(
+async def _fetch_sensor_series(
     client: httpx.AsyncClient,
     sensor_id: int,
     date_from: datetime,
     date_to: datetime,
+    granularity: str,
+    semaphore: asyncio.Semaphore,
 ) -> list[dict]:
-    """Fetch hourly measurements for a single sensor."""
+    """Fetch aggregated measurements for a single sensor.
+
+    granularity must be 'hours' or 'days' — picks /sensors/{id}/hours or /days.
+    semaphore caps simultaneous in-flight requests to protect rate limits.
+    """
     params = {
         "datetime_from": date_from.strftime("%Y-%m-%dT%H:%M:%SZ"),
         "datetime_to": date_to.strftime("%Y-%m-%dT%H:%M:%SZ"),
         "limit": OPENAQ_MEASUREMENTS_LIMIT,
     }
-    resp = await client.get(
-        f"{OPENAQ_BASE_URL}/sensors/{sensor_id}/hours",
-        params=params,
-    )
+    url = f"{OPENAQ_BASE_URL}/sensors/{sensor_id}/{granularity}"
+    async with semaphore:
+        resp = await client.get(url, params=params)
     if resp.status_code == 429:
         logger.warning("Rate limited fetching sensor %s, skipping", sensor_id)
         return []
@@ -122,61 +131,81 @@ def _parse_measurement(
     )
 
 
-async def fetch_city_data(city_name: str) -> CityAirQuality:
-    """Fetch the last 48 hours of air quality data for a UK city.
+async def fetch_city_data(
+    city_name: str,
+    hours: int = MEASUREMENT_WINDOW_HOURS,
+    granularity: str = "hours",
+) -> CityAirQuality:
+    """Fetch air quality data for a UK city over the requested window.
 
     Args:
         city_name: One of the supported UK city names (e.g. "London").
+        hours: How far back to look. Default 48 h.
+        granularity: 'hours' or 'days' — chooses the OpenAQ aggregation endpoint.
+            Use 'days' for windows >72 h to keep payloads manageable.
 
     Returns:
         CityAirQuality with validated station and measurement data.
     """
+    if granularity not in _VALID_GRANULARITIES:
+        raise ValueError(
+            f"granularity must be one of {sorted(_VALID_GRANULARITIES)}, got {granularity!r}"
+        )
+
     city = get_city(city_name)
     now = datetime.now(timezone.utc)
-    date_from = now - timedelta(hours=MEASUREMENT_WINDOW_HOURS)
+    date_from = now - timedelta(hours=hours)
 
     stations: list[StationData] = []
+    semaphore = asyncio.Semaphore(OPENAQ_MAX_CONCURRENT)
 
     async with httpx.AsyncClient(headers=_headers(), timeout=30.0) as client:
         locations = await _fetch_locations(client, city)
 
+        # Build a flat list of (loc, sensor) pairs so we can fan out across all sensors at once
+        loc_sensor_pairs: list[tuple[dict, dict]] = []
         for loc in locations:
+            for sensor in _extract_sensors(loc):
+                loc_sensor_pairs.append((loc, sensor))
+
+        if not loc_sensor_pairs:
+            return CityAirQuality(city=city_name, stations=[])
+
+        results = await asyncio.gather(
+            *[
+                _fetch_sensor_series(client, sensor["id"], date_from, now, granularity, semaphore)
+                for _, sensor in loc_sensor_pairs
+            ],
+            return_exceptions=True,
+        )
+
+        # Group measurements by location
+        by_loc: dict[int, list[Measurement]] = {}
+        loc_meta: dict[int, dict] = {}
+        for (loc, sensor), raw_or_exc in zip(loc_sensor_pairs, results):
             loc_id: int = loc["id"]
-            loc_name: str = loc.get("name", "")
-            coords = loc.get("coordinates", {})
-            lat = coords.get("latitude", 0.0)
-            lon = coords.get("longitude", 0.0)
-
-            sensors = _extract_sensors(loc)
-            if not sensors:
+            if isinstance(raw_or_exc, Exception):
+                logger.warning("Failed to fetch sensor %s: %s", sensor["id"], raw_or_exc)
                 continue
+            loc_meta.setdefault(loc_id, loc)
+            for raw in raw_or_exc:
+                m = _parse_measurement(raw, sensor, loc_id, loc.get("name", ""))
+                if m is not None:
+                    by_loc.setdefault(loc_id, []).append(m)
 
-            measurements: list[Measurement] = []
-            for sensor in sensors:
-                try:
-                    raw_hours = await _fetch_sensor_hours(
-                        client, sensor["id"], date_from, now
-                    )
-                except httpx.HTTPStatusError as exc:
-                    logger.warning(
-                        "Failed to fetch sensor %s: %s", sensor["id"], exc
-                    )
-                    continue
-
-                for raw in raw_hours:
-                    m = _parse_measurement(raw, sensor, loc_id, loc_name)
-                    if m is not None:
-                        measurements.append(m)
-
-            if measurements:
-                stations.append(
-                    StationData(
-                        location_id=loc_id,
-                        name=loc_name,
-                        latitude=lat,
-                        longitude=lon,
-                        measurements=measurements,
-                    )
+        for loc_id, measurements in by_loc.items():
+            if not measurements:
+                continue
+            loc = loc_meta[loc_id]
+            coords = loc.get("coordinates", {})
+            stations.append(
+                StationData(
+                    location_id=loc_id,
+                    name=loc.get("name", ""),
+                    latitude=coords.get("latitude", 0.0),
+                    longitude=coords.get("longitude", 0.0),
+                    measurements=measurements,
                 )
+            )
 
     return CityAirQuality(city=city_name, stations=stations)
