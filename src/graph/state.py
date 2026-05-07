@@ -12,6 +12,9 @@ class GraphState(TypedDict, total=False):
 
     Attributes:
         city: Name of the UK city being analysed.
+        hours: Look-back window in hours.
+        granularity: 'hours' or 'days' — drives OpenAQ endpoint selection.
+        range_label: Human-readable label for the range (used in prompts/UI).
         measurements: Validated air quality data fetched from OpenAQ.
         analysis: LLM-generated summary of the air quality data.
         chat_history: Conversation history for follow-up questions.
@@ -20,6 +23,9 @@ class GraphState(TypedDict, total=False):
     """
 
     city: str
+    hours: int
+    granularity: str
+    range_label: str
     measurements: CityAirQuality | None
     analysis: str
     chat_history: list[ChatMessage]
