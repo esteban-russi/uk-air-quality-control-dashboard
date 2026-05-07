@@ -77,7 +77,7 @@ make format         # ruff format src/ tests/
 |---|---|---|
 | `OPENAQ_API_KEY` | Yes | OpenAQ API key ([register here](https://explore.openaq.org/register)) |
 | `GOOGLE_AI_STUDIO_API_KEY` | Yes | Google AI Studio API key for Gemini |
-| `GEMINI_MODEL` | No | Gemini model name (default: `gemini-2.0-flash`) |
+| `GEMINI_MODEL` | No | Gemini model name (default: `gemini-2.5-flash`) |
 
 ## Project Structure
 

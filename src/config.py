@@ -9,7 +9,7 @@ load_dotenv()
 
 # --- API keys ---
 GOOGLE_AI_STUDIO_API_KEY: str = os.getenv("GOOGLE_AI_STUDIO_API_KEY", "")
-GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 OPENAQ_API_KEY: str = os.getenv("OPENAQ_API_KEY", "")
 
 # --- OpenAQ ---

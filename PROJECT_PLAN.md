@@ -177,7 +177,7 @@ uk-air-quality-control-dashboard/
 
 ```env
 GOOGLE_AI_STUDIO_API_KEY=your-key-here
-GEMINI_MODEL=gemini-2.0-flash       # swap to cheaper model for testing
+GEMINI_MODEL=gemini-2.5-flash       # swap to cheaper model for testing
 OPENAQ_API_KEY=your-key-here         # optional, increases rate limit
 ```
 
