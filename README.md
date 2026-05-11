@@ -1,26 +1,58 @@
 # UK Air Quality Dashboard
 
-A Streamlit dashboard that displays real-time air quality data for major UK cities using the [OpenAQ API v3](https://docs.openaq.org/). Select a city, explore pollutant concentrations over the last 48 hours, compare readings against WHO guidelines, and locate nearby monitoring stations on an interactive map.
+A Streamlit dashboard that displays real-time air quality data for major UK cities using the [OpenAQ API v3](https://docs.openaq.org/). Select a city, explore pollutant concentrations, compare readings against WHO guidelines, and get AI-powered analysis — all in one place.
+
+![Dashboard UI](figures/dashboard_ui.png)
 
 ## Features
 
+### Data & Visualisation
 - **10 UK cities** — London, Manchester, Bristol, Birmingham, Edinburgh, Leeds, Glasgow, Cardiff, Belfast, Liverpool
 - **6 pollutants** — PM2.5, PM10, NO₂, O₃, SO₂, CO
+- **Flexible time ranges** — Last 24 hours, 48 hours, 7 days, or 30 days with automatic hourly/daily granularity
 - **KPI summary** — Mean, max, min values and percentage of readings above WHO guidelines
-- **Time-series chart** — Plotly line chart per pollutant across all nearby stations
-- **Station map** — Interactive OpenStreetMap showing monitoring station locations
-- **Pollutant info** — Short description of each pollutant, its sources, and health impact
-- **LLM analysis** — Gemini Flash–powered air quality summary with WHO guideline comparison via LangGraph
-- **Follow-up chat** — Ask grounded questions about the data; answers use only available measurements
+- **Time-series chart** — Plotly line chart per pollutant with WHO guideline threshold lines
+- **Station map** — Interactive OpenStreetMap with stations color-coded by WHO band (good / moderate / poor)
+- **Pollutant info** — Description of each pollutant, its sources, and health impact
+- **Smart caching** — Fetched data is cached per city + time range; switching back reuses cached results without re-hitting the API
+
+### AI-Powered Analysis
+- **Automated air quality summary** — Gemini 2.5 Flash generates a natural-language analysis on every city selection, comparing pollutant levels against WHO 24-hour guidelines
+- **WHO guideline comparison** — Each pollutant is classified as below, near (within 80%), or above WHO limits with indicators
+- **Trend detection** — The LLM identifies rising/falling/stable trends, spikes, and per-station highs and lows from the time series
+- **Grounded responses** — A strict system prompt ensures the model uses only provided measurement data — no hallucinated values or external sources
+- **Follow-up chat** — Ask questions about the data via a built-in chat interface; answers are scoped exclusively to the current city's measurements and prior analysis
+- **Conversation memory** — Full chat history is maintained in session state and passed as context for coherent multi-turn conversations
+- **Scope enforcement** — Off-topic questions are politely refused; the LLM explains what data would be needed if a question can't be answered
+
+### LangGraph Orchestration
+- **Two-chain architecture** — An analysis chain (`retrieve → analyze → END`) for initial data + summary, and a conditional chat chain (`respond → END`) for follow-ups
+- **Async pipeline** — Data retrieval and LLM calls run asynchronously via `asyncio` for responsive UI
 
 ## Architecture
 
 ```
-Streamlit UI  →  LangGraph Chain  →  OpenAQ API
-                                  →  Gemini Flash API
+┌─────────────────────────────────────────────────┐
+│                 Streamlit UI                     │
+│  ┌───────────┐  ┌────────────┐  ┌─────────────┐ │
+│  │ City/Range│  │ Plotly     │  │ Chat        │ │
+│  │ Selector  │  │ Charts     │  │ Interface   │ │
+│  └─────┬─────┘  └─────▲──────┘  └──────┬──────┘ │
+└────────┼──────────────┼─────────────────┼────────┘
+         │              │                 │
+    ┌────▼──────────────┴─────────────────▼────┐
+    │            LangGraph Chains              │
+    │  ┌──────────┐  ┌──────────┐  ┌────────┐ │
+    │  │ Retrieve  │→ │ Analyze  │→ │ Respond│ │
+    │  │ (OpenAQ)  │  │ (Gemini) │  │ (Chat) │ │
+    │  └──────────┘  └──────────┘  └────────┘ │
+    └──────────────────────────────────────────┘
+         │                 │
+    ┌────▼─────┐     ┌────▼──────┐
+    │ OpenAQ   │     │ Gemini    │
+    │ API v3   │     │ 2.5 Flash │
+    └──────────┘     └───────────┘
 ```
-
-See [PROJECT_PLAN.md](PROJECT_PLAN.md) for the full architecture diagram and deployment stages.
 
 ## Quick Start
 
@@ -114,14 +146,14 @@ tests/
 - **[Plotly](https://plotly.com/python/)** — Interactive charts & maps
 - **[Pydantic v2](https://docs.pydantic.dev/)** — Data validation
 - **[httpx](https://www.python-httpx.org/)** — Async HTTP client
-- **[LangGraph](https://langchain-ai.github.io/langgraph/)** — LLM orchestration chain
-- **[Gemini Flash](https://ai.google.dev/)** — Air quality analysis & chat
+- **[LangGraph](https://langchain-ai.github.io/langgraph/)** — Two-chain LLM orchestration (analysis + chat)
+- **[langchain-google-genai](https://python.langchain.com/docs/integrations/chat/google_generative_ai/)** — Gemini 2.5 Flash integration for grounded analysis & conversational Q&A
 
 ## CI/CD
 
 GitHub Actions runs on every push/PR to `main`:
 - **Lint** — `ruff check`
-- **Test** — `pytest` (38 tests, all mocked — no API keys required)
+- **Test** — `pytest` (all mocked — no API keys required)
 
 ## License
 
